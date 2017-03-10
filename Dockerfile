@@ -1,5 +1,13 @@
-FROM golang:1.7
+FROM golang:1.8
 
-ENV KAFKACAT /opt/kafkacat
+ENV KAFKACAT_VERSION=1.3.0 KAFKACAT_PATH=/opt/kafkacat
 
-RUN apt-get update && apt-get -y install librdkafka-dev libyajl-dev && mkdir $KAFKACAT && git clone https://github.com/edenhill/kafkacat.git $KAFKACAT && cd $KAFKACAT && ./configure && make && make install && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get -y install\
+        librdkafka-dev libyajl-dev \
+    && mkdir "$KAFKACAT_PATH" \
+    && git clone -b "$KAFKACAT_VERSION" https://github.com/edenhill/kafkacat.git "$KAFKACAT_PATH" \
+    && cd "$KAFKACAT_PATH" \
+    && ./configure \
+    && make && make install \
+    && rm -rf /var/lib/apt/lists/*
+
