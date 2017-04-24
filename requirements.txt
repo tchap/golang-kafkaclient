@@ -1,0 +1,2 @@
+ghstat==0.3.1
+github3.py==1.0.0a4
