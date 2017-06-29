@@ -13,3 +13,6 @@ RUN apt-get update && apt-get -y install\
     && ./configure \
     && make && make install \
     && rm -rf /var/lib/apt/lists/* && rm -rf /tmp/* /var/tmp/* \
+    && wget -qO - http://packages.confluent.io/deb/3.2/archive.key | apt-key add - \
+    && echo "deb http://packages.confluent.io/deb/3.2 stable main" >> /etc/apt/sources.list \
+    && apt-get update && apt-get -y install librdkafka-dev \
