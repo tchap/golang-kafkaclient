@@ -1,16 +1,53 @@
-FROM golang:1.8
+FROM golang:1.8.3-alpine3.5
 
-ENV KAFKACAT_VERSION=1.3.0 KAFKACAT_PATH=/opt/kafkacat
+ARG LIBRDKAFKA_NAME="librdkafka"
+ARG LIBRDKAFKA_VER="0.11.0"
 
-RUN apt-get update && apt-get -y install\
-        librdkafka-dev libyajl-dev \
-    && mkdir "$KAFKACAT_PATH" \
-    && git clone -b "$KAFKACAT_VERSION" https://github.com/edenhill/kafkacat.git "$KAFKACAT_PATH" \
-    && cd "$KAFKACAT_PATH" \
-    && ./configure \
-    && make && make install \
-    && rm -rf /var/lib/apt/lists/* \
-    && wget -qO - http://packages.confluent.io/deb/3.2/archive.key | apt-key add - \
-    && echo "deb http://packages.confluent.io/deb/3.2 stable main" >> /etc/apt/sources.list \
-    && apt-get update && apt-get -y install librdkafka-dev \
-
+# Install librdkafka
+RUN apk add --no-cache --virtual .fetch-deps \
+      ca-certificates \
+      libressl \
+      tar && \
+\
+    apk add --no-cache make \
+      libc-dev \
+      git \
+      gcc && \
+\
+    BUILD_DIR="$(mktemp -d)" && \
+\
+    wget -O "$BUILD_DIR/$LIBRDKAFKA_NAME.tar.gz" "https://github.com/edenhill/librdkafka/archive/v$LIBRDKAFKA_VER.tar.gz" && \
+    mkdir -p $BUILD_DIR/$LIBRDKAFKA_NAME-$LIBRDKAFKA_VER && \
+    tar \
+      --extract \
+      --file "$BUILD_DIR/$LIBRDKAFKA_NAME.tar.gz" \
+      --directory "$BUILD_DIR/$LIBRDKAFKA_NAME-$LIBRDKAFKA_VER" \
+      --strip-components 1 && \
+\
+    apk add --no-cache --virtual .build-deps \
+      bash \
+      g++ \
+      libressl-dev \
+      python \
+      musl-dev \
+      zlib-dev && \
+\
+    cd "$BUILD_DIR/$LIBRDKAFKA_NAME-$LIBRDKAFKA_VER" && \
+    ./configure \
+      --prefix=/usr && \
+    make -j "$(getconf _NPROCESSORS_ONLN)" && \
+    make install && \
+\
+    runDeps="$( \
+      scanelf --needed --nobanner --recursive /usr/local \
+        | awk '{ gsub(/,/, "\nso:", $2); print "so:" $2 }' \
+        | sort -u \
+        | xargs -r apk info --installed \
+        | sort -u \
+      )" && \
+    apk add --no-cache --virtual .librdkafka-rundeps \
+      $runDeps && \
+\
+    cd / && \
+    apk del .fetch-deps .build-deps && \
+    rm -rf $BUILD_DIR
