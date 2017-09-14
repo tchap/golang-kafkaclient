@@ -1,16 +1,9 @@
-FROM golang:1.8
+FROM golang:1.8.3-alpine3.5
 
-ENV KAFKACAT_VERSION=1.3.0 KAFKACAT_PATH=/opt/kafkacat
+ARG LIBRESSL_VERSION=2.5
+ARG LIBRDKAFKA_VERSION=0.11.0-r0
 
-RUN apt-get update && apt-get -y install\
-        librdkafka-dev libyajl-dev \
-    && mkdir "$KAFKACAT_PATH" \
-    && git clone -b "$KAFKACAT_VERSION" https://github.com/edenhill/kafkacat.git "$KAFKACAT_PATH" \
-    && cd "$KAFKACAT_PATH" \
-    && ./configure \
-    && make && make install \
-    && rm -rf /var/lib/apt/lists/* \
-    && wget -qO - http://packages.confluent.io/deb/3.2/archive.key | apt-key add - \
-    && echo "deb http://packages.confluent.io/deb/3.2 stable main" >> /etc/apt/sources.list \
-    && apt-get update && apt-get -y install librdkafka-dev \
-
+RUN apk add libressl${LIBRESSL_VERSION}-libcrypto libressl${LIBRESSL_VERSION}-libssl --update-cache --repository http://nl.alpinelinux.org/alpine/edge/main && \
+	apk add make \
+	  git && \
+    apk add librdkafka=${LIBRDKAFKA_VERSION} --update-cache --repository http://nl.alpinelinux.org/alpine/edge/community
