@@ -1,53 +1,9 @@
 FROM golang:1.8.3-alpine3.5
 
-ARG LIBRDKAFKA_NAME="librdkafka"
-ARG LIBRDKAFKA_VER="0.11.0"
+ARG LIBRESSL_VERSION=2.5
+ARG LIBRDKAFKA_VERSION=0.11.0-r0
 
-# Install librdkafka
-RUN apk add --no-cache --virtual .fetch-deps \
-      ca-certificates \
-      libressl \
-      tar && \
-\
-    apk add --no-cache make \
-      libc-dev \
-      git \
-      gcc && \
-\
-    BUILD_DIR="$(mktemp -d)" && \
-\
-    wget -O "$BUILD_DIR/$LIBRDKAFKA_NAME.tar.gz" "https://github.com/edenhill/librdkafka/archive/v$LIBRDKAFKA_VER.tar.gz" && \
-    mkdir -p $BUILD_DIR/$LIBRDKAFKA_NAME-$LIBRDKAFKA_VER && \
-    tar \
-      --extract \
-      --file "$BUILD_DIR/$LIBRDKAFKA_NAME.tar.gz" \
-      --directory "$BUILD_DIR/$LIBRDKAFKA_NAME-$LIBRDKAFKA_VER" \
-      --strip-components 1 && \
-\
-    apk add --no-cache --virtual .build-deps \
-      bash \
-      g++ \
-      libressl-dev \
-      python \
-      musl-dev \
-      zlib-dev && \
-\
-    cd "$BUILD_DIR/$LIBRDKAFKA_NAME-$LIBRDKAFKA_VER" && \
-    ./configure \
-      --prefix=/usr && \
-    make -j "$(getconf _NPROCESSORS_ONLN)" && \
-    make install && \
-\
-    runDeps="$( \
-      scanelf --needed --nobanner --recursive /usr/local \
-        | awk '{ gsub(/,/, "\nso:", $2); print "so:" $2 }' \
-        | sort -u \
-        | xargs -r apk info --installed \
-        | sort -u \
-      )" && \
-    apk add --no-cache --virtual .librdkafka-rundeps \
-      $runDeps && \
-\
-    cd / && \
-    apk del .fetch-deps .build-deps && \
-    rm -rf $BUILD_DIR
+RUN apk add libressl${LIBRESSL_VERSION}-libcrypto libressl${LIBRESSL_VERSION}-libssl --update-cache --repository http://nl.alpinelinux.org/alpine/edge/main && \
+	apk add make \
+	  git && \
+    apk add librdkafka=${LIBRDKAFKA_VERSION} --update-cache --repository http://nl.alpinelinux.org/alpine/edge/community
